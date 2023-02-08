@@ -83,7 +83,8 @@ bool is_valid_expression(const std::string& str)
 }
 
 double Compute(const std::string& expression) {
-    /* Create a string stream from the expression string. */
+
+    /* Create a string stream from the expression string */
     std::istringstream iss(expression);
     double result;
     if (iss >> result) {
@@ -98,6 +99,7 @@ int main() {
     std::getline(std::cin, input);
 
     /* Split the input string into two expressions. */
+
     int period_index = input.find(".");
     if (period_index == std::string::npos) {
         std::cerr << "Error: Missing period at the end of the expression." << std::endl;
