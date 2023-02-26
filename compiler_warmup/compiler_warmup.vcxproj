@@ -129,6 +129,12 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FileReader.h" />
+    <ClInclude Include="Parser.h" />
+    <ClInclude Include="IR.h" />
+    <ClInclude Include="Tokenizer.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -19,4 +19,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tokenizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FileReader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="IR.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
