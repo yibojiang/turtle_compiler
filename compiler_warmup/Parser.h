@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 
 #include "Tokenizer.h"
@@ -9,242 +10,47 @@ using std::endl;
 
 struct Parser
 {
-    Parser(const string& inputStr) : tokenizer(inputStr) {}
+    Parser(const string& inputStr);
 
-    int GetIdentifierValue(int id) const
-    {
-        auto itr = m_VariableTable.find(id);
-        if (itr == m_VariableTable.end())
-        {
-            SyntaxError(0);
-        }
-        return itr->second;
-    }
+    int GetIdentifierValue(int id) const;
 
-    void Designator()
-    {
-        if (tokenizer.GetToken() == Token::IDENTIFIER)
-        {
-            int identifier = tokenizer.GetIdentifier();
-            tokenizer.GetNext();
+    void Designator();
 
-            
-            if (tokenizer.GetToken() == Token::LEFTBRACKET)
-            {
-                tokenizer.GetNext();
-                Expression();
-                if (tokenizer.GetToken() == Token::RIGHTBRACKET)
-                {
-                    tokenizer.GetNext();
-                }
-            }
-        }
-    }
+    int Factor();
 
-    int Factor()
-    {
-        if (tokenizer.GetToken() == Token::NUMBER)
-        {
-            int number = tokenizer.GetNumber();
-            tokenizer.GetNext();
-            return number;
-        }
-        else if (tokenizer.GetToken() == Token::IDENTIFIER)
-        {
-            int identifier = tokenizer.GetIdentifier();
-            int val = GetIdentifierValue(identifier);
-            tokenizer.GetNext();
-            return val;
-        }
-        else if (tokenizer.GetToken() == Token::LEFTPAREN)
-        {
-            tokenizer.GetNext();
-            int val = Expression();
+    int Term();
 
-            if (tokenizer.GetToken() == Token::RIGHTPAREN)
-            {
-                tokenizer.GetNext();
-                return val;
-            }
+    int Expression();
 
-            SyntaxError(0);
-            return 0;
-        }
-        return 0;
-    }
+    bool Relation();
 
-    int Term()
-    {
-        int result = Factor();
-        while (true)
-        {
-            if (tokenizer.GetToken() == Token::MUL)
-            {
-                tokenizer.GetNext();
-                result *= Factor();
-            }
-            else if (tokenizer.GetToken() == Token::DIV)
-            {
-                tokenizer.GetNext();
-                result /= Factor();
-            }
-            else
-            {
-                break;
-            }
-        }
-        return result;
-    }
+    void Assignment();
 
-    int Expression()
-    {
-        int result = Term();
-        while (true)
-        {
-            if (tokenizer.GetToken() == Token::PLUS)
-            {
-                tokenizer.GetNext();
-                result += Term();
-            }
-            else if (tokenizer.GetToken() == Token::MINUS)
-            {
-                tokenizer.GetNext();
-                result -= Term();
-            }
-            else
-            {
-                break;
-            }
-        }
-        return result;
-    }
+    void FuncCall();
 
-    bool Relation()
-    {
-        int val1 = Expression();
-        if (tokenizer.GetToken() == Token::RELOP)
-        {
-            RelOp relOp = tokenizer.GetRelOp();
-            tokenizer.GetNext();
-            int val2 = Expression();
-            if (relOp == RelOp::EQUAL)
-            {
-                return val1 == val2;
-            }
-            else if (relOp == RelOp::NOTEQUAL)
-            {
-                return val1 != val2;
-            }
-            else if (relOp == RelOp::LESS)
-            {
-                return val1 < val2;
-            }
-            else if (relOp == RelOp::LESSEQUAL)
-            {
-                return val1 <= val2;
-            }
-            else if (relOp == RelOp::GREATER)
-            {
-                return val1 > val2;
-            }
-            else if (relOp == RelOp::GREATEREQUAL)
-            {
-                return val1 >= val2;
-            }
-        }
-        else
-        {
-            SyntaxError(0);
-        }
-        return false;
-    }
+    void IfStatement();
 
-    void Assignment()
-    {
-        tokenizer.GetNext();
-        if (tokenizer.GetToken() == Token::LET)
-        {
-            Designator();
-            if (tokenizer.GetToken() == Token::ASSIGN)
-            {
-                Expression();
-            }
-        }
-    }
+    void WhileStatement();
 
-    void Computation()
-    {
-        tokenizer.GetNext();
-        if (tokenizer.GetToken() == Token::COMPUTATION)
-        {
-            tokenizer.GetNext();
+    void ReturnStatement();
 
-            // Assignment expression
-            while (tokenizer.GetToken() == Token::VAR)
-            {
-                tokenizer.GetNext();
-                if (tokenizer.GetToken() == Token::IDENTIFIER)
-                {
-                    int id = tokenizer.GetIdentifier();
-                    tokenizer.GetNext();
-                    if (tokenizer.GetToken() == Token::ASSIGN)
-                    {
-                        tokenizer.GetNext();
-                        int val = Expression();
+    void Statement();
 
-                        // Update the variable table
-                        m_VariableTable[id] = val;
+    void StatSequence();
 
-                        if (tokenizer.GetToken() == Token::SIMICOLON)
-                        {
-                            tokenizer.GetNext();
-                        }
-                        else
-                        {
-                            SyntaxError(0);
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        SyntaxError(0);
-                        return;
-                    }
-                }
-                else
-                {
-                    SyntaxError(0);
-                    return;
-                }
-            }
+    void TypeDecl();
 
-            cout << Expression() << endl;
-            while (tokenizer.GetToken() == Token::SIMICOLON)
-            {
-                tokenizer.GetNext();
-                cout << Expression() << endl;
-            }
+    void VarDecl();
 
-            if (tokenizer.GetToken() == Token::DOT)
-            {
-                return;
-            }
-            else
-            {
-                SyntaxError(0);
-            }
-        }
-        else
-        {
-            SyntaxError(0);
-        }
-    }
+    void FuncDecl();
 
-    void SyntaxError(int errorCode) const
-    {
-        __debugbreak();
-        cout << "syntax error" << errorCode << endl;
-    }
+    void FormalParam();
+
+    void FuncBody();
+
+    void Computation();
+
+    void SyntaxError(int errorCode) const;
 
     Tokenizer tokenizer;
 
