@@ -10,7 +10,17 @@ using std::string;
 
 int main()
 {
-    string inputStr = "computation var i <- 2 * (-3) + 1; var abracadabra <- 7;(((abracadabra * i))) + 10;i - 5 - 1.";
+    string inputStr = R"(
+        main
+        var a, b, c, d, e; {
+        let a < -call InputNum();
+        let b < -a;
+        let c < -b;
+        let d < -b + c;
+        let e < -a + b;
+        if a < 0 then let d < -d + e; let a < -d else let d < -e fi;
+        call OutputNum(a)
+    }.)";
     Parser parser(inputStr);
     parser.Computation();
     Parser pasrser(inputStr);

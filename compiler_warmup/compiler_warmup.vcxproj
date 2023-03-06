@@ -132,6 +132,7 @@
     <ClCompile Include="Tokenizer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Argument.h" />
     <ClInclude Include="FileReader.h" />
     <ClInclude Include="Parser.h" />
     <ClInclude Include="IR.h" />

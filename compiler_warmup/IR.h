@@ -1,8 +1,44 @@
 #pragma once
+#include <memory>
+#include <vector>
+#include "Argument.h"
 
-// SSA form
+using std::weak_ptr;
+using std::shared_ptr;
+using std::vector;
+
+enum class OpType
+{
+    Plus,
+    Minus,
+    Mul,
+    Div,
+    Assignment,
+};
+
 struct IR
 {
-    int m_Operator;
-    int m_OpCode[2];
+public:
+    IR()
+    {
+
+    }
+
+public:
+    OpType m_Op;
+    Argument m_Arg1;
+    Argument m_Arg2;
+};
+
+enum class ResultType
+{
+    Constant,
+    IR,
+};
+
+struct Result
+{
+    ResultType m_Type;
+    int m_ConstantVal;
+    weak_ptr<IR> m_Result;
 };

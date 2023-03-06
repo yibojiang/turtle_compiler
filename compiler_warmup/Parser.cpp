@@ -3,162 +3,362 @@
 Parser::Parser(const string& inputStr): tokenizer(inputStr)
 {}
 
-int Parser::GetIdentifierValue(int id) const
+shared_ptr<IR> Parser::GetIdentifierValue(int id) const
 {
-    auto itr = m_VariableTable.find(id);
-    if (itr == m_VariableTable.end())
+    auto itr = m_SymbolTable.find(id);
+    if (itr == m_SymbolTable.end())
     {
         SyntaxError(0);
     }
     return itr->second;
 }
 
-void Parser::Designator()
+int Parser::Designator()
 {
     if (tokenizer.GetToken() == Token::IDENTIFIER)
     {
         int identifier = tokenizer.GetIdentifier();
         tokenizer.GetNext();
-
             
         if (tokenizer.GetToken() == Token::LEFTBRACKET)
         {
             tokenizer.GetNext();
-            Expression();
+            Result resB = Expression();
+            // TODO: Evaluate array identifier
             if (tokenizer.GetToken() == Token::RIGHTBRACKET)
             {
                 tokenizer.GetNext();
             }
         }
+        return identifier;
     }
 }
 
-int Parser::Factor()
+Result Parser::Factor()
 {
+    Result res;
     if (tokenizer.GetToken() == Token::NUMBER)
     {
         int number = tokenizer.GetNumber();
+        res.m_Type = ResultType::Constant;
+        res.m_ConstantVal = number;
         tokenizer.GetNext();
-        return number;
     }
     else if (tokenizer.GetToken() == Token::IDENTIFIER)
     {
         int identifier = tokenizer.GetIdentifier();
-        int val = GetIdentifierValue(identifier);
+        res.m_Type = ResultType::IR;
+        res.m_Result = GetIdentifierValue(identifier);
         tokenizer.GetNext();
-        return val;
     }
     else if (tokenizer.GetToken() == Token::LEFTPAREN)
     {
         tokenizer.GetNext();
-        int val = Expression();
+        res = Expression();
 
         if (tokenizer.GetToken() == Token::RIGHTPAREN)
         {
             tokenizer.GetNext();
-            return val;
         }
-
-        SyntaxError(0);
-        return 0;
+        else
+        {
+            SyntaxError(0);
+        }
     }
-    return 0;
+
+    return res;
 }
 
-int Parser::Term()
+Result Parser::Term()
 {
-    int result = Factor();
+    Result resA = Factor();
     while (true)
     {
         if (tokenizer.GetToken() == Token::MUL)
         {
             tokenizer.GetNext();
-            result *= Factor();
+            Result resB = Factor();
+            resA = CombinResult(resA, resB, Token::MUL);
         }
         else if (tokenizer.GetToken() == Token::DIV)
         {
             tokenizer.GetNext();
-            result /= Factor();
+            Result resB = Factor();
+            resA = CombinResult(resA, resB, Token::DIV);
         }
         else
         {
             break;
         }
     }
-    return result;
+
+    return resA;
 }
 
-int Parser::Expression()
+Result Parser::Expression()
 {
-    int result = Term();
+    Result resA = Term();
     while (true)
     {
         if (tokenizer.GetToken() == Token::PLUS)
         {
             tokenizer.GetNext();
-            result += Term();
+            Result resB = Term();
+            resA = CombinResult(resA, resB, Token::PLUS);
         }
         else if (tokenizer.GetToken() == Token::MINUS)
         {
             tokenizer.GetNext();
-            result -= Term();
+            Result resB = Term();
+            resA = CombinResult(resA, resB, Token::MINUS);
         }
         else
         {
             break;
         }
     }
-    return result;
+
+    return resA;
 }
 
-bool Parser::Relation()
+Result Parser::CombinResult(Result resA, Result resB, Token token)
 {
-    int val1 = Expression();
+    Result res;
+    if (resA.m_Type == ResultType::Constant && resB.m_Type == ResultType::Constant)
+    {
+        if (token == Token::PLUS)
+        {
+            res.m_Type = ResultType::Constant;
+            res.m_ConstantVal = resA.m_ConstantVal + resB.m_ConstantVal;
+        }
+        else if (token == Token::MINUS)
+        {
+            res.m_Type = ResultType::Constant;
+            res.m_ConstantVal = resA.m_ConstantVal - resB.m_ConstantVal;
+        }
+        else if (token == Token::MUL)
+        {
+            res.m_Type = ResultType::Constant;
+            res.m_ConstantVal = resA.m_ConstantVal * resB.m_ConstantVal;
+        }
+        else if (token == Token::DIV)
+        {
+            res.m_Type = ResultType::Constant;
+            res.m_ConstantVal = resA.m_ConstantVal / resB.m_ConstantVal;
+        }
+    }
+    else if (resA.m_Type == ResultType::IR && resB.m_Type == ResultType::Constant)
+    {
+        if (token == Token::PLUS)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Plus;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::MINUS)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Minus;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::MUL)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Mul;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::DIV)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Div;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
+            m_IRInstructions.push_back(ir);
+        }
+    }
+    else if (resA.m_Type == ResultType::Constant && resB.m_Type == ResultType::IR)
+    {
+        if (token == Token::PLUS)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Plus;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::MINUS)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Minus;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::MUL)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Mul;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::DIV)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Div;
+            ir->m_Arg1.m_Type = ArgumentType::Constant;
+            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+    }
+    else if (resA.m_Type == ResultType::IR && resB.m_Type == ResultType::IR)
+    {
+        if (token == Token::PLUS)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Plus;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::MINUS)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Minus;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::MUL)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Mul;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+        else if (token == Token::DIV)
+        {
+            res.m_Type = ResultType::IR;
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Div;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg1.m_ResultPtr = resA.m_Result;
+            ir->m_Arg1.m_Type = ArgumentType::IR;
+            ir->m_Arg2.m_ResultPtr = resB.m_Result;
+            m_IRInstructions.push_back(ir);
+        }
+    }
+
+    return res;
+}
+
+void Parser::Relation()
+{
+    Expression();
     if (tokenizer.GetToken() == Token::RELOP)
     {
         RelOp relOp = tokenizer.GetRelOp();
         tokenizer.GetNext();
-        int val2 = Expression();
+        Expression();
         if (relOp == RelOp::EQUAL)
         {
-            return val1 == val2;
+            // TODO: Evaluate expression
+            return;
         }
         else if (relOp == RelOp::NOTEQUAL)
         {
-            return val1 != val2;
+            // TODO: Evaluate expression
+            return;
         }
         else if (relOp == RelOp::LESS)
         {
-            return val1 < val2;
+            // TODO: Evaluate expression
+            return;
         }
         else if (relOp == RelOp::LESSEQUAL)
         {
-            return val1 <= val2;
+            // TODO: Evaluate expression
+            return;
         }
         else if (relOp == RelOp::GREATER)
         {
-            return val1 > val2;
+            // TODO: Evaluate expression
+            return;
         }
         else if (relOp == RelOp::GREATEREQUAL)
         {
-            return val1 >= val2;
+            // TODO: Evaluate expression
+            return;
         }
     }
     else
     {
         SyntaxError(0);
     }
-    return false;
 }
 
 void Parser::Assignment()
 {
     if (tokenizer.GetToken() == Token::LET)
     {
-        Designator();
+        int identifier = Designator();
         if (tokenizer.GetToken() == Token::ASSIGN)
         {
-            Expression();
+            Result resB = Expression();
+            shared_ptr<IR> ir = make_shared<IR>();
+            ir->m_Op = OpType::Assignment;
+            if (resB.m_Type == ResultType::Constant)
+            {
+                ir->m_Arg1.m_Type = ArgumentType::Constant;
+                ir->m_Arg1.m_ConstantVal = resB.m_ConstantVal;
+            }
+            else if (resB.m_Type == ResultType::IR)
+            {
+                ir->m_Arg1.m_Type = ArgumentType::IR;
+                ir->m_Arg1.m_ResultPtr = resB.m_Result.lock();
+            }
+            m_IRInstructions.push_back(ir);
+            m_SymbolTable[identifier] = ir;
         }
     }
 }
@@ -195,7 +395,6 @@ void Parser::FuncCall()
                 }
             }
         }
-            
     }
 }
 
@@ -410,15 +609,17 @@ void Parser::FuncBody()
     if (tokenizer.GetToken() == Token::LEFTCURLBRACKET)
     {
         tokenizer.GetNext();
+        StatSequence();
         if (tokenizer.GetToken() == Token::RIGHTCURLBRACKET)
         {
-            StatSequence();
+            tokenizer.GetNext();
         }
     }
 }
 
 void Parser::Computation()
 {
+    tokenizer.GetNext();
     if (tokenizer.GetToken() == Token::MAIN)
     {
         tokenizer.GetNext();
@@ -444,4 +645,16 @@ void Parser::SyntaxError(int errorCode) const
 {
     __debugbreak();
     cout << "syntax error" << errorCode << endl;
+}
+
+void Parser::CheckFor(Token token)
+{
+    if (tokenizer.GetToken() == token)
+    {
+        tokenizer.GetNext();
+    }
+    else
+    {
+        SyntaxError(0);
+    }
 }

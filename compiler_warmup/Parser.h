@@ -2,27 +2,31 @@
 #include <iostream>
 #include <string>
 
+#include "IR.h"
 #include "Tokenizer.h"
 
 using std::string;
 using std::cout;
 using std::endl;
+using std::make_shared;
 
 struct Parser
 {
     Parser(const string& inputStr);
 
-    int GetIdentifierValue(int id) const;
+    shared_ptr<IR> GetIdentifierValue(int id) const;
 
-    void Designator();
+    int Designator();
 
-    int Factor();
+    Result Factor();
 
-    int Term();
+    Result Term();
 
-    int Expression();
+    Result Expression();
 
-    bool Relation();
+    Result CombinResult(Result A, Result B, Token token);
+
+    void Relation();
 
     void Assignment();
 
@@ -52,7 +56,11 @@ struct Parser
 
     void SyntaxError(int errorCode) const;
 
+    void CheckFor(Token token);
+
     Tokenizer tokenizer;
 
-    unordered_map<int, int> m_VariableTable;
+    unordered_map<int, shared_ptr<IR>> m_SymbolTable;
+
+    vector<shared_ptr<IR>> m_IRInstructions;
 };

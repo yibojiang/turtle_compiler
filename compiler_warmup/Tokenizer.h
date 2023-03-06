@@ -103,6 +103,10 @@ public:
 
     RelOp GetRelOp();
 
+    string Id2String(int id);
+
+    int String2Id(const string& str);
+
 private:
     unordered_map<string, int> m_IdentifierTable{};
 

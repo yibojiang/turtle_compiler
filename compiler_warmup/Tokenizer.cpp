@@ -110,6 +110,7 @@ void Tokenizer::GetNext()
             }
             else
             {
+                // TODO: Variable would be evaluated as an IR
                 m_IdentifierTable[identifier] = static_cast<int>(m_IdentifierTable.size());
                 m_Identifier = m_IdentifierTable[identifier];
             }
@@ -256,4 +257,16 @@ int Tokenizer::GetIdentifier() const
 RelOp Tokenizer::GetRelOp()
 {
     return m_RelOps;
+}
+
+string Tokenizer::Id2String(int id)
+{
+    // TODO
+    return "";
+}
+
+int Tokenizer::String2Id(const string& str)
+{
+    // TODO
+    return 0;
 }
