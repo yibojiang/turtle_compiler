@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "Argument.h"
 
 using std::weak_ptr;
 using std::shared_ptr;
@@ -9,6 +8,7 @@ using std::vector;
 
 enum class OpType
 {
+    Constant,
     Plus,
     Minus,
     Mul,
@@ -16,18 +16,26 @@ enum class OpType
     Assignment,
 };
 
-struct IR
+
+class IR
 {
 public:
-    IR()
-    {
+    OpType GetOp() const { return m_Op; }
 
-    }
+    IR(int constant);
 
-public:
+    IR(OpType op, shared_ptr<IR> arg1, shared_ptr<IR> arg2);
+
+protected:
+    int m_Number;
+
+private:
     OpType m_Op;
-    Argument m_Arg1;
-    Argument m_Arg2;
+    shared_ptr<IR> m_Arg1{};
+    shared_ptr<IR> m_Arg2{};
+    int m_ConstantVal;
+
+    static int s_Number;
 };
 
 enum class ResultType

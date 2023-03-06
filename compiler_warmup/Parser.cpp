@@ -23,7 +23,7 @@ int Parser::Designator()
         if (tokenizer.GetToken() == Token::LEFTBRACKET)
         {
             tokenizer.GetNext();
-            Result resB = Expression();
+            shared_ptr<IR> resB = Expression();
             // TODO: Evaluate array identifier
             if (tokenizer.GetToken() == Token::RIGHTBRACKET)
             {
@@ -34,31 +34,31 @@ int Parser::Designator()
     }
 }
 
-Result Parser::Factor()
+shared_ptr<IR> Parser::Factor()
 {
-    Result res;
     if (tokenizer.GetToken() == Token::NUMBER)
     {
         int number = tokenizer.GetNumber();
-        res.m_Type = ResultType::Constant;
-        res.m_ConstantVal = number;
         tokenizer.GetNext();
+        shared_ptr<IR> res = make_shared<IR>(number);
+        return res;
     }
     else if (tokenizer.GetToken() == Token::IDENTIFIER)
     {
         int identifier = tokenizer.GetIdentifier();
-        res.m_Type = ResultType::IR;
-        res.m_Result = GetIdentifierValue(identifier);
         tokenizer.GetNext();
+        shared_ptr<IR> res = GetIdentifierValue(identifier);
+        return res;
     }
     else if (tokenizer.GetToken() == Token::LEFTPAREN)
     {
         tokenizer.GetNext();
-        res = Expression();
+        shared_ptr<IR> res = Expression();
 
         if (tokenizer.GetToken() == Token::RIGHTPAREN)
         {
             tokenizer.GetNext();
+            return res;
         }
         else
         {
@@ -66,25 +66,25 @@ Result Parser::Factor()
         }
     }
 
-    return res;
+    return nullptr;
 }
 
-Result Parser::Term()
+shared_ptr<IR> Parser::Term()
 {
-    Result resA = Factor();
+    shared_ptr<IR> resA = Factor();
     while (true)
     {
         if (tokenizer.GetToken() == Token::MUL)
         {
             tokenizer.GetNext();
-            Result resB = Factor();
-            resA = CombinResult(resA, resB, Token::MUL);
+            shared_ptr<IR> resB = Factor();
+            resA = BuildIR(resA, resB, OpType::Mul);
         }
         else if (tokenizer.GetToken() == Token::DIV)
         {
             tokenizer.GetNext();
-            Result resB = Factor();
-            resA = CombinResult(resA, resB, Token::DIV);
+            shared_ptr<IR> resB = Factor();
+            resA = BuildIR(resA, resB, OpType::Div);
         }
         else
         {
@@ -95,22 +95,22 @@ Result Parser::Term()
     return resA;
 }
 
-Result Parser::Expression()
+shared_ptr<IR> Parser::Expression()
 {
-    Result resA = Term();
+    shared_ptr<IR> resA = Term();
     while (true)
     {
         if (tokenizer.GetToken() == Token::PLUS)
         {
             tokenizer.GetNext();
-            Result resB = Term();
-            resA = CombinResult(resA, resB, Token::PLUS);
+            shared_ptr<IR> resB = Term();
+            resA = BuildIR(resA, resB, OpType::Plus);
         }
         else if (tokenizer.GetToken() == Token::MINUS)
         {
             tokenizer.GetNext();
-            Result resB = Term();
-            resA = CombinResult(resA, resB, Token::MINUS);
+            shared_ptr<IR> resB = Term();
+            resA = BuildIR(resA, resB, OpType::Minus);
         }
         else
         {
@@ -121,175 +121,10 @@ Result Parser::Expression()
     return resA;
 }
 
-Result Parser::CombinResult(Result resA, Result resB, Token token)
+shared_ptr<IR> Parser::BuildIR(shared_ptr<IR> resA, shared_ptr<IR> resB, OpType op)
 {
-    Result res;
-    if (resA.m_Type == ResultType::Constant && resB.m_Type == ResultType::Constant)
-    {
-        if (token == Token::PLUS)
-        {
-            res.m_Type = ResultType::Constant;
-            res.m_ConstantVal = resA.m_ConstantVal + resB.m_ConstantVal;
-        }
-        else if (token == Token::MINUS)
-        {
-            res.m_Type = ResultType::Constant;
-            res.m_ConstantVal = resA.m_ConstantVal - resB.m_ConstantVal;
-        }
-        else if (token == Token::MUL)
-        {
-            res.m_Type = ResultType::Constant;
-            res.m_ConstantVal = resA.m_ConstantVal * resB.m_ConstantVal;
-        }
-        else if (token == Token::DIV)
-        {
-            res.m_Type = ResultType::Constant;
-            res.m_ConstantVal = resA.m_ConstantVal / resB.m_ConstantVal;
-        }
-    }
-    else if (resA.m_Type == ResultType::IR && resB.m_Type == ResultType::Constant)
-    {
-        if (token == Token::PLUS)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Plus;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::MINUS)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Minus;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::MUL)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Mul;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::DIV)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Div;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg2.m_ConstantVal = resB.m_ConstantVal;
-            m_IRInstructions.push_back(ir);
-        }
-    }
-    else if (resA.m_Type == ResultType::Constant && resB.m_Type == ResultType::IR)
-    {
-        if (token == Token::PLUS)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Plus;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::MINUS)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Minus;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::MUL)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Mul;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::DIV)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Div;
-            ir->m_Arg1.m_Type = ArgumentType::Constant;
-            ir->m_Arg1.m_ConstantVal = resA.m_ConstantVal;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-    }
-    else if (resA.m_Type == ResultType::IR && resB.m_Type == ResultType::IR)
-    {
-        if (token == Token::PLUS)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Plus;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::MINUS)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Minus;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::MUL)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Mul;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-        else if (token == Token::DIV)
-        {
-            res.m_Type = ResultType::IR;
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Div;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg1.m_ResultPtr = resA.m_Result;
-            ir->m_Arg1.m_Type = ArgumentType::IR;
-            ir->m_Arg2.m_ResultPtr = resB.m_Result;
-            m_IRInstructions.push_back(ir);
-        }
-    }
-
-    return res;
+    shared_ptr<IR> ir = make_shared<IR>(op, resA, resB);
+    return resA;
 }
 
 void Parser::Relation()
@@ -344,21 +179,9 @@ void Parser::Assignment()
         int identifier = Designator();
         if (tokenizer.GetToken() == Token::ASSIGN)
         {
-            Result resB = Expression();
-            shared_ptr<IR> ir = make_shared<IR>();
-            ir->m_Op = OpType::Assignment;
-            if (resB.m_Type == ResultType::Constant)
-            {
-                ir->m_Arg1.m_Type = ArgumentType::Constant;
-                ir->m_Arg1.m_ConstantVal = resB.m_ConstantVal;
-            }
-            else if (resB.m_Type == ResultType::IR)
-            {
-                ir->m_Arg1.m_Type = ArgumentType::IR;
-                ir->m_Arg1.m_ResultPtr = resB.m_Result.lock();
-            }
-            m_IRInstructions.push_back(ir);
-            m_SymbolTable[identifier] = ir;
+            shared_ptr<IR> resB = Expression();
+            // TODO: SSA
+            m_SymbolTable[identifier] = resB;
         }
     }
 }

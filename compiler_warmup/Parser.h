@@ -18,13 +18,13 @@ struct Parser
 
     int Designator();
 
-    Result Factor();
+    shared_ptr<IR> Factor();
 
-    Result Term();
+    shared_ptr<IR> Term();
 
-    Result Expression();
+    shared_ptr<IR> Expression();
 
-    Result CombinResult(Result A, Result B, Token token);
+    shared_ptr<IR> BuildIR(shared_ptr<IR> A, shared_ptr<IR> B, OpType op);
 
     void Relation();
 
@@ -61,6 +61,4 @@ struct Parser
     Tokenizer tokenizer;
 
     unordered_map<int, shared_ptr<IR>> m_SymbolTable;
-
-    vector<shared_ptr<IR>> m_IRInstructions;
 };
