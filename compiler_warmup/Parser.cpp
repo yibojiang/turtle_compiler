@@ -3,15 +3,15 @@
 Parser::Parser(const string& inputStr): tokenizer(inputStr)
 {}
 
-shared_ptr<IR> Parser::GetIdentifierValue(int id) const
-{
-    auto itr = m_SymbolTable.find(id);
-    if (itr == m_SymbolTable.end())
-    {
-        SyntaxError(0);
-    }
-    return itr->second;
-}
+// shared_ptr<IR> Parser::GetIdentifierValue(int id) const
+// {
+//     auto itr = m_SymbolTable.find(id);
+//     if (itr == m_SymbolTable.end())
+//     {
+//         SyntaxError(0);
+//     }
+//     return itr->second;
+// }
 
 int Parser::Designator()
 {
@@ -41,13 +41,14 @@ shared_ptr<IR> Parser::Factor()
         int number = tokenizer.GetNumber();
         tokenizer.GetNext();
         shared_ptr<IR> res = make_shared<IR>(number);
+        m_ConstantBlock->AddIR(res);
         return res;
     }
     else if (tokenizer.GetToken() == Token::IDENTIFIER)
     {
         int identifier = tokenizer.GetIdentifier();
         tokenizer.GetNext();
-        shared_ptr<IR> res = GetIdentifierValue(identifier);
+        shared_ptr<IR> res = m_ConstantBlock->GetIdentifierValue(identifier);
         return res;
     }
     else if (tokenizer.GetToken() == Token::LEFTPAREN)
@@ -124,6 +125,7 @@ shared_ptr<IR> Parser::Expression()
 shared_ptr<IR> Parser::BuildIR(shared_ptr<IR> resA, shared_ptr<IR> resB, OpType op)
 {
     shared_ptr<IR> ir = make_shared<IR>(op, resA, resB);
+    m_CurrentBlock->AddIR(ir);
     return resA;
 }
 
@@ -181,7 +183,7 @@ void Parser::Assignment()
         {
             shared_ptr<IR> resB = Expression();
             // TODO: SSA
-            m_SymbolTable[identifier] = resB;
+            // m_SymbolTable[identifier] = resB;
         }
     }
 }
@@ -223,6 +225,7 @@ void Parser::FuncCall()
 
 void Parser::IfStatement()
 {
+    shared_ptr<BasicBlock> prevBasicBlock = m_CurrentBlock;
     if (tokenizer.GetToken() == Token::IF)
     {
         tokenizer.GetNext();
@@ -230,11 +233,23 @@ void Parser::IfStatement()
         if (tokenizer.GetToken() == Token::THEN)
         {
             tokenizer.GetNext();
+
+            const shared_ptr<BasicBlock> bb = make_shared<BasicBlock>();
+            m_BasicBlocks.push_back(bb);
+            m_CurrentBlock = bb;
+            //TODO: Copy the symbol table to basic block from the prev basic block
+
             StatSequence();
 
             if (tokenizer.GetToken() == Token::ELSE)
             {
                 tokenizer.GetNext();
+
+                const shared_ptr<BasicBlock> bbElse = make_shared<BasicBlock>();
+                m_BasicBlocks.push_back(bbElse);
+                m_CurrentBlock = bbElse;
+                //TODO: Copy the symbol table to this basic block from the prev basic block
+
                 StatSequence();
 
                 if (tokenizer.GetToken() == Token::FI)
@@ -247,6 +262,11 @@ void Parser::IfStatement()
                 }
             }
         }
+
+        const shared_ptr<BasicBlock> joinBlock = make_shared<BasicBlock>();
+        m_BasicBlocks.push_back(joinBlock);
+        m_CurrentBlock = joinBlock;
+        //TODO: Copy the symbol table to basic block from the prev basic block
     }
 }
 
@@ -311,9 +331,12 @@ void Parser::StatSequence()
 
 void Parser::TypeDecl()
 {
-    if (tokenizer.GetToken() == Token::VAR || tokenizer.GetToken() == Token::ARRAY)
+    if (tokenizer.GetToken() == Token::VAR)
     {
         tokenizer.GetNext();
+    }
+    else if (tokenizer.GetToken() == Token::ARRAY)
+    {
         if (tokenizer.GetToken() == Token::LEFTBRACKET)
         {
             tokenizer.GetNext();
@@ -347,7 +370,7 @@ void Parser::VarDecl()
     while (tokenizer.GetToken() == Token::COMMA)
     {
         tokenizer.GetNext();
-        while (tokenizer.GetToken() == Token::IDENTIFIER)
+        if (tokenizer.GetToken() == Token::IDENTIFIER)
         {
             int ident = tokenizer.GetIdentifier();
             tokenizer.GetNext();
@@ -442,9 +465,18 @@ void Parser::FuncBody()
 
 void Parser::Computation()
 {
+    // Create the basic block for all constant SSA value
+    m_ConstantBlock = make_shared<BasicBlock>();
+    m_BasicBlocks.push_back(m_ConstantBlock);
+
     tokenizer.GetNext();
     if (tokenizer.GetToken() == Token::MAIN)
     {
+        // Create the basic block for the main
+        const shared_ptr<BasicBlock> bb1 = make_shared<BasicBlock>();
+        m_BasicBlocks.push_back(bb1);
+        m_CurrentBlock = bb1;
+
         tokenizer.GetNext();
         VarDecl();
         FuncDecl();

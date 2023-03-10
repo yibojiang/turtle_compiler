@@ -14,6 +14,7 @@ enum class OpType
     Mul,
     Div,
     Assignment,
+    Phi
 };
 
 
@@ -31,8 +32,8 @@ protected:
 
 private:
     OpType m_Op;
-    shared_ptr<IR> m_Arg1{};
-    shared_ptr<IR> m_Arg2{};
+    weak_ptr<IR> m_Arg1{};
+    weak_ptr<IR> m_Arg2{};
     int m_ConstantVal;
 
     static int s_Number;

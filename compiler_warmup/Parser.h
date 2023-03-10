@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+#include "BasicBlock.h"
 #include "IR.h"
 #include "Tokenizer.h"
 
@@ -13,8 +14,6 @@ using std::make_shared;
 struct Parser
 {
     Parser(const string& inputStr);
-
-    shared_ptr<IR> GetIdentifierValue(int id) const;
 
     int Designator();
 
@@ -60,5 +59,12 @@ struct Parser
 
     Tokenizer tokenizer;
 
-    unordered_map<int, shared_ptr<IR>> m_SymbolTable;
+    shared_ptr<BasicBlock> m_ConstantBlock{};
+
+    vector<shared_ptr<BasicBlock>> m_BasicBlocks{};
+
+    // indicate the current block during the parsing
+    shared_ptr<BasicBlock> m_CurrentBlock{};
+
+
 };
