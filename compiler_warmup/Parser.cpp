@@ -3,16 +3,6 @@
 Parser::Parser(const string& inputStr): tokenizer(inputStr)
 {}
 
-// shared_ptr<IR> Parser::GetIdentifierValue(int id) const
-// {
-//     auto itr = m_SymbolTable.find(id);
-//     if (itr == m_SymbolTable.end())
-//     {
-//         SyntaxError(0);
-//     }
-//     return itr->second;
-// }
-
 int Parser::Designator()
 {
     if (tokenizer.GetToken() == Token::IDENTIFIER)
@@ -40,7 +30,7 @@ shared_ptr<IR> Parser::Factor()
     {
         int number = tokenizer.GetNumber();
         tokenizer.GetNext();
-        shared_ptr<IR> res = make_shared<IR>(number);
+        shared_ptr<IR> res = BuildIR(number);
         m_ConstantBlock->AddIR(res);
         return res;
     }
@@ -49,6 +39,17 @@ shared_ptr<IR> Parser::Factor()
         int identifier = tokenizer.GetIdentifier();
         tokenizer.GetNext();
         shared_ptr<IR> res = m_ConstantBlock->GetIdentifierValue(identifier);
+
+        // When use uninitialized variable
+        if (res == nullptr)
+        {
+            // Output warning because use of uninitialized variable
+            cout << "use of uninitialized variable: " << identifier << endl;
+
+            // TODO find or build the IR
+            shared_ptr<IR> res = BuildIR(0);
+            m_CurrentBlock->SetIdentifierValue(identifier, res);
+        }
         return res;
     }
     else if (tokenizer.GetToken() == Token::LEFTPAREN)
@@ -105,7 +106,7 @@ shared_ptr<IR> Parser::Expression()
         {
             tokenizer.GetNext();
             shared_ptr<IR> resB = Term();
-            resA = BuildIR(resA, resB, OpType::Plus);
+            resA = BuildIR(resA, resB, OpType::Add);
         }
         else if (tokenizer.GetToken() == Token::MINUS)
         {
@@ -125,8 +126,13 @@ shared_ptr<IR> Parser::Expression()
 shared_ptr<IR> Parser::BuildIR(shared_ptr<IR> resA, shared_ptr<IR> resB, OpType op)
 {
     shared_ptr<IR> ir = make_shared<IR>(op, resA, resB);
-    m_CurrentBlock->AddIR(ir);
-    return resA;
+    return m_CurrentBlock->AddIR(ir);
+}
+
+shared_ptr<IR> Parser::BuildIR(int constant)
+{
+    shared_ptr<IR> ir = make_shared<IR>(0);
+    return m_ConstantBlock->AddIR(ir);
 }
 
 void Parser::Relation()
@@ -178,12 +184,13 @@ void Parser::Assignment()
 {
     if (tokenizer.GetToken() == Token::LET)
     {
+        tokenizer.GetNext();
         int identifier = Designator();
         if (tokenizer.GetToken() == Token::ASSIGN)
         {
+            tokenizer.GetNext();
             shared_ptr<IR> resB = Expression();
-            // TODO: SSA
-            // m_SymbolTable[identifier] = resB;
+            m_CurrentBlock->SetIdentifierValue(identifier, resB);
         }
     }
 }
@@ -211,7 +218,6 @@ void Parser::FuncCall()
                 if (tokenizer.GetToken() == Token::RIGHTPAREN)
                 {
                     tokenizer.GetNext();
-
                     // TODO evaluate function call
                 }
                 else
@@ -226,6 +232,9 @@ void Parser::FuncCall()
 void Parser::IfStatement()
 {
     shared_ptr<BasicBlock> prevBasicBlock = m_CurrentBlock;
+
+    const shared_ptr<BasicBlock> joinBlock = make_shared<BasicBlock>();
+
     if (tokenizer.GetToken() == Token::IF)
     {
         tokenizer.GetNext();
@@ -238,6 +247,8 @@ void Parser::IfStatement()
             m_BasicBlocks.push_back(bb);
             m_CurrentBlock = bb;
             //TODO: Copy the symbol table to basic block from the prev basic block
+
+            prevBasicBlock->AddForwardEdgeSets(bb);
 
             StatSequence();
 
@@ -261,12 +272,15 @@ void Parser::IfStatement()
                     SyntaxError(0);
                 }
             }
+
+            bb->AddForwardEdgeSets(joinBlock);
         }
 
-        const shared_ptr<BasicBlock> joinBlock = make_shared<BasicBlock>();
+        
         m_BasicBlocks.push_back(joinBlock);
         m_CurrentBlock = joinBlock;
         //TODO: Copy the symbol table to basic block from the prev basic block
+        prevBasicBlock->AddForwardEdgeSets(joinBlock);
     }
 }
 
@@ -323,10 +337,6 @@ void Parser::StatSequence()
     {
         tokenizer.GetNext();
     }
-    else
-    {
-        SyntaxError(0);
-    }
 }
 
 void Parser::TypeDecl()
@@ -364,6 +374,7 @@ void Parser::VarDecl()
     if (tokenizer.GetToken() == Token::IDENTIFIER)
     {
         int ident = tokenizer.GetIdentifier();
+        m_CurrentBlock->SetIdentifierValue(ident, nullptr);
         tokenizer.GetNext();
     }
 
@@ -373,6 +384,7 @@ void Parser::VarDecl()
         if (tokenizer.GetToken() == Token::IDENTIFIER)
         {
             int ident = tokenizer.GetIdentifier();
+            m_CurrentBlock->SetIdentifierValue(ident, nullptr);
             tokenizer.GetNext();
         }
     }
@@ -477,6 +489,8 @@ void Parser::Computation()
         m_BasicBlocks.push_back(bb1);
         m_CurrentBlock = bb1;
 
+        m_ConstantBlock->AddBackwardEdgeSets(bb1);
+
         tokenizer.GetNext();
         VarDecl();
         FuncDecl();
@@ -494,6 +508,18 @@ void Parser::Computation()
             }
         }
     }
+}
+
+void Parser::PrintGraph()
+{
+    cout << "digraph G{" << endl;
+    for (int blockIdx = 0; blockIdx < m_BasicBlocks.size(); blockIdx++)
+    {
+        cout << "  bb" << blockIdx << R"([shape=record, label="<b>BB)" << blockIdx << "|";
+        cout << m_BasicBlocks[blockIdx]->GetGraphString();
+        cout << "\"];" << endl;
+    }
+    cout << "}" << endl;
 }
 
 void Parser::SyntaxError(int errorCode) const

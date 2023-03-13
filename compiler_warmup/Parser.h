@@ -25,6 +25,8 @@ struct Parser
 
     shared_ptr<IR> BuildIR(shared_ptr<IR> A, shared_ptr<IR> B, OpType op);
 
+    shared_ptr<IR> BuildIR(int constant);
+
     void Relation();
 
     void Assignment();
@@ -52,6 +54,8 @@ struct Parser
     void FuncBody();
 
     void Computation();
+
+    void PrintGraph();
 
     void SyntaxError(int errorCode) const;
 

@@ -107,6 +107,80 @@ void Tokenizer::GetNext()
                     m_Token = Token::COMPUTATION;
                     return;
                 }
+
+                if (m_Identifier == ReservedWord::LET)
+                {
+                    m_Token = Token::LET;
+                    return;
+                }
+
+                if (m_Identifier == ReservedWord::CALL)
+                {
+                    m_Token = Token::CALL;
+                    return;
+                }
+
+                if (m_Identifier == ReservedWord::IF)
+                {
+                    m_Token = Token::IF;
+                    return;
+                }
+                
+                if (m_Identifier == ReservedWord::THEN)
+                {
+                    m_Token = Token::THEN;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::ELSE)
+                {
+                    m_Token = Token::ELSE;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::FI)
+                {
+                    m_Token = Token::FI;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::WHILE)
+                {
+                    m_Token = Token::WHILE;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::DO)
+                {
+                    m_Token = Token::DO;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::OD)
+                {
+                    m_Token = Token::OD;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::RETURN)
+                {
+                    m_Token = Token::RETURN;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::ARRAY)
+                {
+                    m_Token = Token::ARRAY;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::VOID)
+                {
+                    m_Token = Token::VOID;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::FUNCTION)
+                {
+                    m_Token = Token::FUNCTION;
+                    return;
+                }
+                if (m_Identifier == ReservedWord::MAIN)
+                {
+                    m_Token = Token::MAIN;
+                    return;
+                }
             }
             else
             {
@@ -142,6 +216,30 @@ void Tokenizer::GetNext()
             m_Token = Token::RIGHTPAREN;
             return;
         }
+        else if (reader.Symbol() == '[')
+        {
+            reader.GetNext();
+            m_Token = Token::LEFTBRACKET;
+            return;
+        }
+        else if (reader.Symbol() == ']')
+        {
+            reader.GetNext();
+            m_Token = Token::RIGHTBRACKET;
+            return;
+        }
+        else if (reader.Symbol() == '{')
+        {
+            reader.GetNext();
+            m_Token = Token::LEFTCURLBRACKET;
+            return;
+        }
+        else if (reader.Symbol() == '}')
+        {
+            reader.GetNext();
+            m_Token = Token::RIGHTCURLBRACKET;
+            return;
+        }
         else if (reader.Symbol() == '+')
         {
             reader.GetNext();
@@ -164,6 +262,12 @@ void Tokenizer::GetNext()
         {
             reader.GetNext();
             m_Token = Token::DIV;
+            return;
+        }
+        else if (reader.Symbol() == ',')
+        {
+            reader.GetNext();
+            m_Token = Token::COMMA;
             return;
         }
         else if (reader.Symbol() == '.')
